@@ -1,0 +1,9 @@
+[res]
+[lib]
+[file]
+console.lua
+lua-require.lua
+test.lua
+load-test1.lua
+/subfolder/load-test2.lua
+touchsprite-exit-hock.lua
