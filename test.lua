@@ -5,5 +5,5 @@ require('lua-require')({
   os_exit = os_exit
 })
 
-require './subfolder/test2.lua'
+require './subfolder/load-test2.lua'
 --console.log(string.gsub('/a/b/c/d/e.test', '/[^/]*$', ''))

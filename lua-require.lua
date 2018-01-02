@@ -26,6 +26,11 @@ end
 local path = (function()
   local path = {}
   path.separator = string.find(package.path, '/') and '/' or '\\'
+  path.basename = function(thePath)
+    local thePathArray = string.split(thePath, path.separator)
+    local res = table.remove(thePathArray)
+    return res
+  end
   path.dirname = function(thePath)
     local thePathArray = string.split(thePath, path.separator)
     table.remove(thePathArray)
@@ -64,25 +69,38 @@ local path = (function()
   return path
 end)()
 
+local basePath = ''
+
 local requireFactory
-requireFactory = function(basePath)
+requireFactory = function(filePath)
   return function(loadpath)
     if type(loadpath) ~= 'string' then
       error('bad argument #1 to \'require\' (string expected, got ' .. type(loadpath) .. ')', 2)
     end
 
-    local requirePath = path.resolve(path.dirname(basePath), loadpath)
+    local requirePath = path.resolve(path.dirname(filePath), loadpath)
+    local requirePathKey = string.gsub(requirePath, basePath, '')
 
-    if not package.loaded[requirePath] then
-      if not package.preload[requirePath] then
-        local file = io.open(requirePath, 'r')
-        local requireSource = file:read('*a')
+    if not package.loaded[requirePathKey] then
+      if not package.preload[requirePathKey] then
+        local file
+        local requireSource
+        local res, err = pcall(function()
+          file = io.open(requirePath, 'r')
+          requireSource = file:read('*a')
+        end)
+        if not res then
+          error('file \'' .. requirePath .. '\' not exist', 2)
+        end
+        if file then
+          file.close()
+        end
         requireSource = 'local require, modePath = ...; ' .. requireSource
-        package.preload[requirePath] = assert(load(requireSource, '@' .. requirePath, 'bt', _ENV))
+        package.preload[requirePathKey] = assert(load(requireSource, '@' .. requirePath, 'bt', _ENV))
       end
-      package.loaded[requirePath] = package.preload[requirePath](requireFactory(requirePath), requirePath) or true
+      package.loaded[requirePathKey] = package.preload[requirePathKey](requireFactory(requirePath), requirePath) or true
     end
-    return package.loaded[requirePath]
+    return package.loaded[requirePathKey]
   end
 end
 
@@ -99,6 +117,8 @@ return function()
 
   if not _require then
     _require = require
-    require = requireFactory(string.gsub(result.source, '^@', ''))
+    local filePath = string.gsub(result.source, '^@', '')
+    basePath = path.dirname(filePath)
+    require = requireFactory(filePath)
   end
 end
